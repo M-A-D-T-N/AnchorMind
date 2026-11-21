@@ -21,3 +21,6 @@ next-env.d.ts
 *.pem
 npm-debug.log*
 .vercel
+
+# local editor / assistant config
+/.claude/
