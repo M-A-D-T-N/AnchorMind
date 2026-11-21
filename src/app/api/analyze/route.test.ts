@@ -146,6 +146,15 @@ describe("demo / live configuration", () => {
     expect(mocks.constructed).toHaveBeenCalledWith({ apiKey: "test-key" });
   });
 
+  it("instructs the model to treat medical red flags and intent as crisis", async () => {
+    geminiReturns(valid);
+    await call({ thought: "hello" });
+    const config = (mocks.generateContent.mock.calls[0]?.[0] as { config: { systemInstruction: string } }).config;
+    expect(config.systemInstruction).toMatch(/POSSIBLE MEDICAL EMERGENCY = CRISIS/);
+    expect(config.systemInstruction).toMatch(/chest pain/);
+    expect(config.systemInstruction).toMatch(/intrusive thoughts/);
+  });
+
   it("honors GEMINI_MODEL", async () => {
     vi.stubEnv("GEMINI_MODEL", "custom-model");
     geminiReturns(valid);
