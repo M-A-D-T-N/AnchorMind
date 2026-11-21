@@ -1,10 +1,16 @@
 # AnchorMind
 
-AnchorMind is a supportive reflection tool for pausing anxiety spirals, panic, and OCD rumination. You enter (or
-dictate) a looping thought, and AnchorMind returns a short, CBT/ACT-informed reflection that separates observable
-facts from anxious assumptions, offers one balanced reframe, and suggests one optional 60-second grounding action.
-When the estimated distress is high, it offers a short breathing exercise first. When crisis intent is detected, it
-shows crisis support immediately instead.
+AnchorMind is a calm, supportive tool for moments of anxiety, panic, or OCD rumination. It opens on one question —
+*what small step do you need right now?* — and offers two paths:
+
+- **Help me settle**: a gentle breathing rhythm or a grounding exercise. Runs entirely on the device: no AI, no API
+  key, and it works offline once the app has loaded.
+- **Untangle a thought**: write or speak a few words, and AnchorMind returns a short, CBT/ACT-informed reflection —
+  a steadier perspective and one thing to try first, with the detailed look at the thought (possible pattern, facts
+  vs. assumptions, an estimated distress score) one tap away.
+
+When the estimated distress is high, a short breathing exercise is offered before the reflection. When crisis intent
+is detected, crisis support is shown immediately instead. **Get urgent support** is in the header on every screen.
 
 > AnchorMind is **not** clinically validated, does not diagnose, does not guarantee relief, and is not a substitute
 > for professional care or emergency services.
@@ -76,6 +82,23 @@ npm run test       # vitest run (exits after one run; Gemini is mocked, no crede
 npm run build
 ```
 
+## The user journey
+
+1. **Home** — “One small step, right now.” Two large actions, plus links to *How AnchorMind works*, *Privacy &
+   limits*, and *Install AnchorMind*. No account, onboarding, questionnaire, or distress rating.
+2. **Help me settle** → *Follow a breathing rhythm* (4 s in, optional 4 s hold, 6 s out × 3 = 42 s; Pause/Resume,
+   Restart, Stop; a “breathe at my own pace” alternative) or *Focus on what you can feel* (feet on the floor, optional
+   60-second timer; Pause/Resume, Restart, Finish). Then: “You can take another moment, or continue.” → *Return home*
+   or *Untangle a thought*.
+3. **Untangle a thought** — “What is your mind telling you right now? A few words is enough.” A short textarea,
+   **Find my anchor** directly below, *Speak instead* as a secondary action, and the disclosure “Your text is sent to
+   Google for an AI-generated reflection.” The three examples sit inside a collapsed *Try an example*.
+4. **Results** — *A steadier perspective* and *One thing to try now* (with an optional 60-second timer) first;
+   *Look at the thought* expands to the possible pattern, explanation, Objective Facts vs. Anxious Assumptions, and the
+   estimated distress score. *Start a new reflection* or *Return home*.
+
+Back/Home controls keep your draft; *Start a new reflection* clears it. Nothing is stored beyond the open tab.
+
 ## How it works
 
 - `src/app/api/analyze/route.ts` — validates the request, chooses demo vs. live, calls Gemini with a system
@@ -88,20 +111,59 @@ npm run build
   `trigger_breathing_first = panic_intensity_score >= 8` rather than trusting the model.
 - **Crisis priority:** if the model's parsed JSON is an object with `is_crisis === true`, a crisis envelope is returned
   immediately, even if other fields are malformed; those fields are never rendered. Breathing never delays crisis support.
-- `src/app/page.tsx` — typed UI state machine (idle → loading → crisis | breathing | results | error), request
-  identity + `AbortController` to ignore stale responses, focus management, and polite status announcements.
+- `src/app/page.tsx` — typed state machine: `home`, `settle` (manual exercises), `thought`, `loading`, `error`,
+  `gate` (analysis breathing gate), `results`, `crisis`, `info`, plus an urgent-support overlay. Request identity +
+  `AbortController` ignore stale responses; opening urgent support during loading cancels the request so a late
+  result can't replace it. Focus moves to each new screen's heading (never on first load, so no phone keyboard pops
+  up), and important changes are announced politely.
+- Components: `HomeScreen`, `SettleFlow` (manual exercises), `ThoughtInputPanel`, `BreathingPacerGate` (gate and
+  manual modes, plus `CrisisAlertBanner`), `GroundingTimer`, `DistortionBreakdown` (results), `InfoScreen`,
+  `InstallEntry`, `ServiceWorkerRegister`.
 
-## Deployment
+## Deployment (public HTTPS)
 
-Any Node.js host that supports Next.js works (e.g. Vercel, Render, Fly.io, a container running `npm run start`).
+Any Node.js host that supports Next.js works (e.g. Vercel, Render, Fly.io, or a container running `npm run start`).
+Installation and offline support require **HTTPS** (browsers allow service workers only on HTTPS or `localhost`).
 
-1. Set Node.js 22.12+ on the host.
-2. Configure `GEMINI_API_KEY`, `GEMINI_MODEL`, and `DEMO_MODE` as **server-side** environment variables.
-3. Build with `npm run build` and start with `npm run start`.
+1. Push the repository to GitHub and import it into your host (on Vercel: *Add New → Project*, framework “Next.js”).
+2. Set Node.js 22.12+ on the host.
+3. Configure `GEMINI_API_KEY`, `GEMINI_MODEL`, and `DEMO_MODE` as **server-side** environment variables (never
+   `NEXT_PUBLIC_`). For a demo that can't fail, use `DEMO_MODE=true`.
+4. Build with `npm run build` and start with `npm run start` (hosts like Vercel do this automatically).
+5. Serve it over HTTPS on your own domain or the host's default domain. Check that `https://<your-domain>/manifest.webmanifest`
+   and `/sw.js` load, then open the site on a phone and try *Install AnchorMind*.
+6. Add the abuse protections below before sharing the link.
 
-The API route runs on the Node.js runtime and sends `Cache-Control: no-store`.
+The API route runs on the Node.js runtime and sends `Cache-Control: no-store`. `/sw.js` is served with
+`Cache-Control: no-cache` so updates roll out promptly.
 
-### Before a public release
+## Home-screen installation
+
+AnchorMind ships a web app manifest (`src/app/manifest.ts` → `/manifest.webmanifest`), standalone display, a dark
+theme/background color, and icons (`public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`,
+`apple-touch-icon.png`, and an SVG favicon).
+
+- **Chrome / Edge (Android and desktop):** *Install AnchorMind* opens the browser's real install prompt when the
+  browser offers one. The app only says it was added after the browser reports `appinstalled`.
+- **iPhone / iPad (Safari):** Share → *Add to Home Screen* (the button shows these instructions).
+- **Other browsers:** short instructions, or a suggestion to bookmark if the browser can't install web apps.
+
+The icons were rendered once from the SVG artwork (`src/app/icon.svg`) and committed as static files.
+
+## What works offline
+
+After the first online visit, the service worker (`public/sw.js`, registered only in production builds) caches
+**only** explicitly selected public static files: the static home page, the manifest, icons, and the content-hashed
+build assets under `/_next/static/`. With no connection:
+
+- ✅ The app opens, and **Help me settle** (breathing and grounding) works fully.
+- ✅ Get urgent support opens (the crisis-line link needs a connection to load).
+- ❌ AI reflections are unavailable. The thought screen says so, and submitting shows an honest offline message,
+  keeps your draft, and sends nothing. There are no fabricated offline reflections and no background queue.
+
+The service worker never intercepts or caches `/api/*`, POST requests, submitted thoughts, or generated reflections.
+
+## Before a public release
 
 The MVP has **no built-in rate limiting or abuse protection**. Before exposing it publicly, add at the hosting or edge
 layer:
@@ -120,6 +182,8 @@ layer:
 - Gemini API keys come from Google AI Studio (`AIza…` or the newer `AQ.…` format). Keys from other providers (for example OpenRouter `sk-or-…`) are rejected with "credentials were rejected."
 
 ## Privacy and data flow
+
+The in-app *Privacy & limits* screen summarizes the points below for users.
 
 - AnchorMind has no database, accounts, analytics, or chat history, and does not store thoughts in `localStorage`.
 - The server does not log submitted thoughts or generated reflections; it logs only error categories.
