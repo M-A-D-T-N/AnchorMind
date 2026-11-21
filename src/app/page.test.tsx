@@ -44,6 +44,9 @@ describe("Home page flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "OCD Checking Loop" }));
     expect(await screen.findByText("OCD Uncertainty Loop")).toBeInTheDocument();
     expect(screen.queryByText(/slow things down/)).not.toBeInTheDocument();
+    // The submitted thought stays visible for context.
+    expect(screen.getByText("You wrote")).toBeInTheDocument();
+    expect(screen.getByText(/check it again/)).toBeInTheDocument();
   });
 
   it("sends the exact preset text and id", async () => {

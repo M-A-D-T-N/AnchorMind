@@ -17,7 +17,27 @@ html {
   background-color: rgb(45 212 191 / 0.3);
 }
 
+/* Slow, calm indeterminate progress for the loading panel. */
+@keyframes anchor-drift {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.anchor-drift {
+  animation: anchor-drift 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .anchor-drift {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+
   *,
   *::before,
   *::after {
