@@ -13,8 +13,8 @@ type ViewState =
   | { status: "loading" }
   | { status: "error"; error: ApiErrorBody }
   | { status: "crisis"; source: ResultSource }
-  | { status: "breathing"; analysis: AnalysisEnvelope }
-  | { status: "results"; analysis: AnalysisEnvelope };
+  | { status: "breathing"; analysis: AnalysisEnvelope; thought: string }
+  | { status: "results"; analysis: AnalysisEnvelope; thought: string };
 
 interface LastRequest {
   thought: string;
@@ -82,9 +82,9 @@ export default function Home() {
         } else if (response.kind === "error") {
           setView({ status: "error", error: response.error });
         } else if (response.result.trigger_breathing_first) {
-          setView({ status: "breathing", analysis: response });
+          setView({ status: "breathing", analysis: response, thought: body.thought });
         } else {
-          setView({ status: "results", analysis: response });
+          setView({ status: "results", analysis: response, thought: body.thought });
         }
       } catch {
         // Aborted: a newer request or a cancel has already taken over.
@@ -112,7 +112,7 @@ export default function Home() {
   };
 
   const finishBreathing = useCallback(() => {
-    setView((v) => (v.status === "breathing" ? { status: "results", analysis: v.analysis } : v));
+    setView((v) => (v.status === "breathing" ? { status: "results", analysis: v.analysis, thought: v.thought } : v));
   }, []);
 
   const closeManualSupport = () => {
@@ -161,6 +161,7 @@ export default function Home() {
             key={view.analysis.result.grounded_reframe + view.analysis.result.panic_intensity_score}
             result={view.analysis.result}
             source={view.analysis.source}
+            thought={view.thought}
             onNewReflection={startNew}
             headingRef={headingRef}
           />
@@ -169,11 +170,9 @@ export default function Home() {
         {showInput && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">Pause the spiral.</h1>
-              <p className="max-w-prose leading-relaxed text-slate-400">
-                Write down the thought that&apos;s looping. AnchorMind offers a short, CBT- and ACT-informed reflection
-                to help you separate what you know from what you fear. It&apos;s a supportive tool, not therapy or
-                emergency care.
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">Pause the spiral.</h1>
+              <p className="max-w-prose text-lg leading-relaxed text-slate-300">
+                Write down the thought that&apos;s looping. We&apos;ll help you separate what you know from what you fear.
               </p>
             </div>
 
@@ -207,11 +206,18 @@ export default function Home() {
                 textareaRef={textareaRef}
               />
               {view.status === "loading" && (
-                <div className="mt-4 flex justify-center">
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-teal-400/20 bg-teal-400/5 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-teal-100">Reading your thought…</p>
+                    <p className="text-sm text-slate-300">Separating what you know from what you fear. This usually takes a few seconds.</p>
+                    <div aria-hidden="true" className="mt-2.5 h-0.5 w-full overflow-hidden rounded-full bg-teal-400/10">
+                      <div className="anchor-drift h-full w-1/3 rounded-full bg-teal-400/60" />
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={cancelLoading}
-                    className="min-h-11 rounded-xl px-4 text-sm font-medium text-slate-400 underline underline-offset-4 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
+                    className="min-h-11 rounded-xl px-4 text-sm font-medium text-slate-300 underline underline-offset-4 hover:text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
                   >
                     Cancel
                   </button>
@@ -222,7 +228,7 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="mx-auto max-w-3xl px-4 pb-10 text-xs leading-relaxed text-slate-500 sm:px-6">
+      <footer className="mx-auto max-w-3xl px-4 pb-10 text-xs leading-relaxed text-slate-400 sm:px-6">
         AnchorMind is a supportive reflection tool. It is not clinically validated, does not diagnose, and is not a
         substitute for professional care or emergency services. Thoughts are not stored by AnchorMind.
       </footer>
