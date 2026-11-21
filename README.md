@@ -112,6 +112,13 @@ layer:
 - Spending caps and quota alerts on the Google AI / Google Cloud project.
 - Monitoring that records only error codes — never submitted thoughts or generated reflections.
 
+## Demo-day checklist
+
+- **Need a guaranteed demo?** Set `DEMO_MODE=true`. The three presets then always return the same fixtures (the Exam preset always scores 9 and shows the breathing gate), and nothing depends on Google's availability.
+- **Live demo:** confirm `GEMINI_MODEL` responds for your key right before presenting. Popular models can return `503 high demand` or `429 quota` errors. AnchorMind reports these honestly and never falls back to another model, so pick one that works (for example a `flash-lite` model) and set it in `.env.local`.
+- Live scores vary from run to run, so a preset may not reach the breathing threshold (8) when it is sent to Gemini.
+- Gemini API keys come from Google AI Studio (`AIza…` or the newer `AQ.…` format). Keys from other providers (for example OpenRouter `sk-or-…`) are rejected with "credentials were rejected."
+
 ## Privacy and data flow
 
 - AnchorMind has no database, accounts, analytics, or chat history, and does not store thoughts in `localStorage`.

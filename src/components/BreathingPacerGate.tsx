@@ -40,7 +40,10 @@ export function CrisisAlertBanner({ variant, onClose, headingRef }: CrisisAlertB
             <li className="flex gap-2">
               <span aria-hidden="true" className="text-rose-300">•</span>
               <span>
-                <strong className="font-semibold text-slate-50">If you are in immediate danger, contact your local emergency services now.</strong>
+                <strong className="font-semibold text-slate-50">
+                  If you are in immediate danger or might be having a medical emergency (such as chest pain or trouble
+                  breathing), contact your local emergency services now.
+                </strong>
               </span>
             </li>
             <li className="flex gap-2">
