@@ -31,7 +31,7 @@ describe("BreathingPacerGate", () => {
     render(<BreathingPacerGate onDone={onDone} />);
     expect(screen.getByText("Breathe in")).toBeInTheDocument();
     advance(4_100);
-    expect(screen.getByText("Hold gently")).toBeInTheDocument();
+    expect(screen.getByText("Hold, if it feels comfortable")).toBeInTheDocument();
     advance(4_000);
     expect(screen.getByText("Breathe out slowly")).toBeInTheDocument();
     advance(BREATHING_TOTAL_MS);
@@ -117,7 +117,7 @@ describe("DistortionBreakdown grounding timer", () => {
     expect(screen.getByText("0:50")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     advance(50_100);
-    expect(screen.getByText(/That's a minute of grounding/)).toBeInTheDocument();
+    expect(screen.getByText(/a minute\. Notice how you/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     expect(screen.getByText("1:00")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start 60-second timer" })).toBeInTheDocument();
@@ -129,6 +129,7 @@ describe("ThoughtInputPanel", () => {
     const onSubmit = vi.fn();
     const onChange = vi.fn();
     render(<ThoughtInputPanel value="" onChange={onChange} onSubmit={onSubmit} loading={false} />);
+    fireEvent.click(screen.getByText("Try an example"));
     fireEvent.click(screen.getByRole("button", { name: "OCD Checking Loop" }));
     expect(onChange).toHaveBeenCalledWith(expect.stringContaining("stove"));
     expect(onSubmit).toHaveBeenCalledWith(expect.stringContaining("stove"), "ocd");
@@ -140,12 +141,12 @@ describe("ThoughtInputPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Find my anchor" }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(/write a thought/);
-    expect(screen.getByLabelText("What's on your mind?")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("What is your mind telling you right now?")).toHaveAttribute("aria-invalid", "true");
   });
 
   it("disables voice input gracefully when unsupported", () => {
     render(<ThoughtInputPanel value="" onChange={() => {}} onSubmit={() => {}} loading={false} />);
-    expect(screen.getByRole("button", { name: "Dictate" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Speak instead" })).toBeDisabled();
     expect(screen.getByText(/Voice input isn't available/)).toBeInTheDocument();
   });
 });

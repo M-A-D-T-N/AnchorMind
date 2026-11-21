@@ -16,6 +16,14 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
         ],
       },
+      {
+        // Always revalidate the service worker so updates roll out promptly.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        ],
+      },
     ];
   },
 };

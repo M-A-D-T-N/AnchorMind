@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type Ref } from "react";
+import { useEffect, useRef, useState, type Ref } from "react";
 import { useElapsedTimer } from "@/lib/useElapsedTimer";
 import { LifebuoyIcon } from "./icons";
 
@@ -75,7 +75,7 @@ export function CrisisAlertBanner({ variant, onClose, headingRef }: CrisisAlertB
             onClick={onClose}
             className="min-h-11 rounded-xl border border-slate-700 px-5 text-sm font-medium text-slate-200 hover:border-slate-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
           >
-            {variant === "detected" ? "Start a new reflection" : "Back"}
+            {variant === "detected" ? "Return home" : "Back"}
           </button>
         </div>
       </div>
@@ -89,7 +89,7 @@ export function CrisisAlertBanner({ variant, onClose, headingRef }: CrisisAlertB
 
 export const BREATH_PHASES = [
   { key: "inhale", label: "Breathe in", seconds: 4 },
-  { key: "hold", label: "Hold gently", seconds: 4 },
+  { key: "hold", label: "Hold, if it feels comfortable", seconds: 4 },
   { key: "exhale", label: "Breathe out slowly", seconds: 6 },
 ] as const;
 export const BREATH_CYCLES = 3;
@@ -119,14 +119,25 @@ function circleScale(key: string, progress: number) {
   return 1 - 0.4 * progress;
 }
 
+export type BreathingDoneReason = "completed" | "skipped" | "stopped";
+
 export interface BreathingPacerGateProps {
-  /** Called exactly once, when the exercise completes or is skipped. */
-  onDone: (reason: "completed" | "skipped") => void;
+  /**
+   * "gate": shown before a high-distress reflection (offers "Skip and view reflection").
+   * "manual": started from "Help me settle" (offers "Stop"). Independent of any analysis.
+   */
+  mode?: "gate" | "manual";
+  /** Called exactly once, when the exercise completes, is skipped, or is stopped. */
+  onDone: (reason: BreathingDoneReason) => void;
   headingRef?: Ref<HTMLHeadingElement>;
 }
 
-export function BreathingPacerGate({ onDone, headingRef }: BreathingPacerGateProps) {
+const pacerButton =
+  "min-h-11 rounded-xl border border-slate-700 px-5 text-sm font-medium text-slate-200 hover:border-teal-400/60 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400";
+
+export function BreathingPacerGate({ mode = "gate", onDone, headingRef }: BreathingPacerGateProps) {
   const timer = useElapsedTimer(BREATHING_TOTAL_MS, { autoStart: true });
+  const [natural, setNatural] = useState(false);
   const doneRef = useRef(false);
   const onDoneRef = useRef(onDone);
 
@@ -141,72 +152,83 @@ export function BreathingPacerGate({ onDone, headingRef }: BreathingPacerGatePro
     }
   }, [timer.status]);
 
-  const skip = () => {
+  const finishEarly = (reason: "skipped" | "stopped") => {
     if (doneRef.current) return;
     doneRef.current = true;
     timer.pause();
-    onDoneRef.current("skipped");
+    onDoneRef.current(reason);
   };
 
   const state = breathingStateAt(timer.elapsedMs);
   const paused = timer.status === "paused";
-  const scale = circleScale(state.phase.key, state.progress);
+  const scale = natural ? 0.85 : circleScale(state.phase.key, state.progress);
+  const instruction = paused ? "Paused" : natural ? "Breathe at your own pace" : state.phase.label;
+  const secondsLeft = Math.max(Math.ceil((BREATHING_TOTAL_MS - timer.elapsedMs) / 1000), 0);
 
   return (
     <section aria-labelledby="breathing-heading" className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg shadow-black/20 sm:p-8">
-      <h2 id="breathing-heading" ref={headingRef} tabIndex={-1} className="text-xl font-semibold text-slate-50 focus:outline-none">
-        Let&apos;s slow things down first
+      <h2 id="breathing-heading" ref={headingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight text-slate-50 focus:outline-none">
+        {mode === "gate" ? "Let’s slow things down first" : "Follow a breathing rhythm"}
       </h2>
       <p className="mt-2 max-w-prose leading-relaxed text-slate-300">
-        Your reflection is ready. Before reading it, here are three slow breaths together — about 40 seconds. If
-        holding or counting feels uncomfortable, just breathe naturally, or skip whenever you like.
+        {mode === "gate"
+          ? "Your reflection is ready. Before reading it, here are three slow breaths together — about 40 seconds. You can skip whenever you like."
+          : "Three slow breaths, about 40 seconds."}{" "}
+        Holding is optional. If counting feels uncomfortable, breathe naturally instead.
       </p>
 
       <div className="my-8 flex flex-col items-center gap-6">
-        <div className="relative flex h-56 w-56 items-center justify-center" aria-hidden="true">
+        <div className="relative flex h-52 w-52 items-center justify-center sm:h-56 sm:w-56" aria-hidden="true">
           <div className="absolute inset-0 rounded-full border border-teal-500/20" />
           <div
             data-testid="breathing-circle"
             className="absolute inset-0 rounded-full bg-teal-500/20 ring-1 ring-teal-400/40 transition-transform duration-100 ease-linear motion-reduce:transition-none motion-reduce:transform-none!"
             style={{ transform: `scale(${scale.toFixed(3)})` }}
           />
-          <span className="relative text-5xl font-light tabular-nums text-teal-100">{state.remainingSeconds}</span>
+          <span className="relative text-5xl font-light tabular-nums text-teal-100">
+            {natural ? secondsLeft : state.remainingSeconds}
+          </span>
         </div>
 
         <div className="text-center">
           <p className="text-2xl font-medium text-slate-50" aria-live="polite" aria-atomic="true">
-            {paused ? "Paused" : state.phase.label}
+            {instruction}
           </p>
           <p className="mt-1 text-sm text-slate-400">
-            Breath {state.cycle} of {BREATH_CYCLES}
+            {natural ? `${secondsLeft} seconds left` : `Breath ${state.cycle} of ${BREATH_CYCLES}`}
           </p>
         </div>
+
+        <button
+          type="button"
+          aria-pressed={natural}
+          onClick={() => setNatural((n) => !n)}
+          className="min-h-11 rounded-full px-4 text-sm font-medium text-teal-200 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
+        >
+          {natural ? "Follow the rhythm again" : "Breathe at my own pace instead"}
+        </button>
       </div>
 
       <div className="flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          onClick={paused ? timer.resume : timer.pause}
-          disabled={timer.status === "done"}
-          className="min-h-11 rounded-xl border border-slate-700 px-5 text-sm font-medium text-slate-200 hover:border-teal-500 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
-        >
+        <button type="button" onClick={paused ? timer.resume : timer.pause} disabled={timer.status === "done"} className={pacerButton}>
           {paused ? "Resume" : "Pause"}
         </button>
-        <button
-          type="button"
-          onClick={timer.restart}
-          disabled={timer.status === "done"}
-          className="min-h-11 rounded-xl border border-slate-700 px-5 text-sm font-medium text-slate-200 hover:border-teal-500 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
-        >
+        <button type="button" onClick={timer.restart} disabled={timer.status === "done"} className={pacerButton}>
           Restart
         </button>
-        <button
-          type="button"
-          onClick={skip}
-          className="min-h-11 rounded-xl bg-teal-500 px-5 text-sm font-semibold text-slate-950 hover:bg-teal-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300"
-        >
-          Skip and view reflection
-        </button>
+        {mode === "gate" ? (
+          <button
+            type="button"
+            onClick={() => finishEarly("skipped")}
+            className="min-h-11 rounded-xl bg-teal-400 px-5 text-sm font-semibold text-slate-950 hover:bg-teal-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200"
+          >
+            Skip and view reflection
+          </button>
+        ) : (
+          <button type="button" onClick={() => finishEarly("stopped")} className={pacerButton}>
+            Stop
+          </button>
+        )}
       </div>
     </section>
   );
